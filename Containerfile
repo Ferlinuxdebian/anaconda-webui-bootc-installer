@@ -1,9 +1,8 @@
 FROM quay.io/fedora/fedora-bootc:45
 
-# Collecting your image bootc personalization
 ARG CONTAINER_NAME=quay.io/fedora/fedora-bootc:45
 
-# Installs essential Anaconda packages to generate the live ISO with the installer
+# Instalação de pacotes essenciais
 RUN dnf install -qy \
     anaconda \
     anaconda-install-img-deps \
@@ -22,8 +21,7 @@ RUN dnf install -qy \
     default-fonts-core-sans \
     jq
 
-# these are necessary build tools. if you use a separate build container then
-# these tools should be installed there
+# Ferramentas de build da ISO
 RUN dnf install -qy \
     xorrisofs \
     squashfs-tools
@@ -32,33 +30,27 @@ RUN dnf clean all
 
 RUN mkdir -p /boot/efi && cp -ra /usr/lib/efi/*/*/EFI /boot/efi
 
-# ---
-
-# some configuration for our ISO
+# --- Configuração da ISO e Kernel ---
 
 RUN mkdir -p /usr/lib/image-builder/bootc
 
-# Configured with inst.webui to launch anacondaWEBUI as the main installer
+# Adicionado 'nvidia.modeset=1' e 'nouveau.modeset=1' para forçar o Kernel a ativar os drivers gráficos imediatamente no boot
 RUN cat <<EOF > /usr/lib/image-builder/bootc/iso.yaml
 label: "Fedora-bootc-Installer"
 grub2:
   timeout: 5
   entries:
     - name: "Install Fedora (bootc WebUI Wayland Local)"
-      linux: \${kernelpath} \${root} inst.webui
+      linux: \${kernelpath} \${root} inst.webui nvidia.modeset=1 nouveau.modeset=1
       initrd: \${initrdpath}
 EOF
 
-# some configuration for anaconda
-
+# Configuração do Anaconda
 COPY <<EOT /usr/share/anaconda/interactive-defaults.ks
 bootc --source-imgref registry:${CONTAINER_NAME} --target-imgref ${CONTAINER_NAME}
 EOT
 
-# ---
-
-# these things are normally performed by `lorax` to make `anaconda` work; this is the
-# bare minimum to get things to work
+# --- Configurações do Sistema e Segurança para o Instalador ---
 
 RUN echo "install:x:0:0:root:/root:/usr/libexec/anaconda/run-anaconda" >> /etc/passwd && \
     echo "install::14438:0:99999:7:::" >> /etc/shadow && \
@@ -77,11 +69,33 @@ COPY <<EOT /usr/lib/systemd/logind.conf.d/anaconda-shell.conf
 ReserveVT=2
 EOT
 
+# --- GARANTIA DE CARREGAMENTO GRÁFICO (BARE METAL NVIDIA) ---
+
+# Sobrescreve o target do Anaconda para só iniciar DEPOIS que o subsistema gráfico do Linux (Udev/DRI) achar a GPU
+RUN mkdir -p /etc/systemd/system/anaconda.target.d/ && \
+    cat <<EOF > /etc/systemd/system/anaconda.target.d/wait-graphics.conf
+[Unit]
+Requires=graphics.target
+After=graphics.target
+EOF
+
+# Força o serviço do instalador a esperar especificamente pelo dispositivo físico de renderização (/dev/dri/card0)
+RUN mkdir -p /etc/systemd/system/anaconda.service.d/ && \
+    cat <<EOF > /etc/systemd/system/anaconda.service.d/wait-device.conf
+[Unit]
+Requires=dev-dri-card0.device
+After=dev-dri-card0.device
+EOF
+
+# Geração do Initramfs incluindo explicitamente os drivers de vídeo e suporte a KMS dentro do boot inicial
 RUN mkdir "$(realpath /root)" && \
     kernel=$(kernel-install list --json pretty | jq -r '.[] | select(.has_kernel == true) | .version') && \
     DRACUT_NO_XATTR=1 dracut --force -v --zstd --reproducible --no-hostonly \
         --add "anaconda" \
+        --add-drivers "nouveau drm drm_kms_helper" \
         "/usr/lib/modules/${kernel}/initramfs.img" "${kernel}"
+
+# --- Permissões de Áudio (Pipewire) ---
 
 RUN mkdir /etc/systemd/user/pipewire.service.d/
 COPY <<EOT /etc/systemd/user/pipewire.service.d/allowroot.conf
