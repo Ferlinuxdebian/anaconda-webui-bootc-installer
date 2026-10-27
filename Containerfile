@@ -3,7 +3,7 @@ FROM quay.io/fedora/fedora-bootc:45
 # Collecting your image bootc personalization
 ARG CONTAINER_NAME=quay.io/fedora/fedora-bootc:45
 
-# Substituído Openbox/X11 por Cage e pacotes Wayland essenciais
+# Installs essential Anaconda packages to generate the live ISO with the installer
 RUN dnf install -qy \
     anaconda \
     anaconda-install-img-deps \
@@ -38,7 +38,7 @@ RUN mkdir -p /boot/efi && cp -ra /usr/lib/efi/*/*/EFI /boot/efi
 
 RUN mkdir -p /usr/lib/image-builder/bootc
 
-# Configurado com inst.webui local em ambiente Wayland nativo
+# Configured with inst.webui to launch anacondaWEBUI as the main installer
 RUN cat <<EOF > /usr/lib/image-builder/bootc/iso.yaml
 label: "Fedora-bootc-Installer"
 grub2:
