@@ -2,6 +2,10 @@
 
 This guide explains how to build the installer image (Anaconda) and generate the LiveISO from a custom `bootc` image using `just`.
 
+> [!WARNING]
+> **ATTENTION!!!** ⚠️  
+> This method uses the new installer (**Anaconda-WEBUI**). To use the version with the legacy installer (**Anaconda-GTK**), please visit this repository: [anaconda-bootc-isos](https://github.com/Ferlinuxdebian/anaconda-bootc-isos)
+
 ### 1. Build the Anaconda Image with Your Custom bootc Image
 
 To build the installer container image using your custom `bootc` image, run:
