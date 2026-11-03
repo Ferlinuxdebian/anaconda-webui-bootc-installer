@@ -12,7 +12,6 @@ RUN dnf install -qy \
     dracut-network \
     net-tools \
     grub2-efi-x64-cdboot \
-    plymouth \
     cockpit-ws \
     cockpit-bridge \
     anaconda-webui \
