@@ -3,6 +3,10 @@ FROM quay.io/fedora/fedora-bootc:45
 # Collecting your image bootc personalization
 ARG CONTAINER_NAME=quay.io/fedora/fedora-bootc:45
 
+# Quando "true", exige que a política de contêineres requeira assinaturas
+# (equivalente a --enforce-container-sigpolicy no bootc install).
+ARG ENFORCE_SIGPOLICY=false
+
 # Installs essential Anaconda packages to generate the live ISO with the installer
 RUN dnf install -qy \
     anaconda \
@@ -28,6 +32,18 @@ RUN dnf install -qy \
     squashfs-tools
 
 RUN dnf clean all
+
+# O comando kickstart `bootc` do Anaconda (F45) não expõe a opção
+# --enforce-container-sigpolicy, mas o bootc lê a configuração de instalação em
+# /etc/bootc/install no ambiente do instalador. Quando ENFORCE_SIGPOLICY=true,
+# exigimos que o /etc/containers/policy.json requeira assinaturas.
+RUN mkdir -p /etc/bootc/install && \
+    if [ "$ENFORCE_SIGPOLICY" = "true" ]; then \
+        printf '[install]\nenforce-container-sigpolicy = true\n' \
+            > /etc/bootc/install/50-enforce-sigpolicy.toml; \
+    else \
+        rm -f /etc/bootc/install/50-enforce-sigpolicy.toml; \
+    fi
 
 RUN mkdir -p /boot/efi && cp -ra /usr/lib/efi/*/*/EFI /boot/efi
 
