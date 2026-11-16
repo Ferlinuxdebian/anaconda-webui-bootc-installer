@@ -32,34 +32,9 @@ sudo just create-iso
 
 ## Verificação de assinatura de contêiner (opcional)
 
-Por padrão (`ENFORCE_SIGPOLICY=false`), o instalador aceita tanto imagens assinadas quanto não assinadas — a política padrão do Fedora é `insecureAcceptAnything`.
-
-Para exigir assinatura na instalação, passe `true` como segundo parâmetro do `just build`:
+Por padrão, o instalador aceita imagens assinadas e não assinadas. Para exigir assinatura, passe `true` como segundo parâmetro do `just build`:
 
 ```bash
 sudo just build <sua-imagem-bootc-personalizada> true
 sudo just create-iso
 ```
-
-Isso grava `/etc/bootc/install/50-enforce-sigpolicy.toml` com `enforce-container-sigpolicy = true`, que é lido pelo `bootc install` no momento da instalação. O comando kickstart `bootc` do Anaconda no Fedora 45 não aceita `--enforce-container-sigpolicy`, por isso usamos esse drop-in de configuração.
-
-> **Atenção:** habilitar a exigência não cria a política de assinatura. Com o `policy.json` padrão do Fedora (`insecureAcceptAnything`), o bootc rejeita o pull e a instalação não prossegue. Para aceitar imagens assinadas, forneça um `/etc/containers/policy.json` que requeira assinaturas, por exemplo:
-
-```json
-{
-  "default": [{"type": "reject"}],
-  "transports": {
-    "docker": {
-      "ghcr.io/ferlinuxdebian": [
-        {
-          "type": "sigstoreSigned",
-          "keyPath": "/etc/pki/sigstore/cosign.pub",
-          "signedIdentity": {"type": "matchRepoDigestOrExact"}
-        }
-      ]
-    }
-  }
-}
-```
-
-Ajuste o namespace (`ghcr.io/ferlinuxdebian`) e o caminho da chave pública do cosign conforme o seu caso.
