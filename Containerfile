@@ -44,9 +44,9 @@ RUN dnf clean all
 # /etc/bootc/install no ambiente do instalador. Quando ENFORCE_SIGPOLICY=true,
 # o bootc passa a exigir que a política de contêineres aprove a assinatura.
 #
-# Atenção: esta opção NÃO assina a imagem. Ela apenas liga a exigência; a
-# chave pública e a política de confiança são instaladas no passo seguinte,
-# a partir da pasta security/ do repositório.
+# Atenção: esta opção NÃO assina a imagem. Ela apenas liga a exigência no
+# bootc install. A imagem precisa estar assinada; a verificação usa a política
+# de confiança do ambiente do instalador.
 RUN mkdir -p /etc/bootc/install && \
     if [ "$ENFORCE_SIGPOLICY" = "true" ]; then \
         printf '[install]\nenforce-container-sigpolicy = true\n' \
@@ -54,21 +54,6 @@ RUN mkdir -p /etc/bootc/install && \
     else \
         rm -f /etc/bootc/install/50-enforce-sigpolicy.toml; \
     fi
-
-# Política de confiança para imagens assinadas.
-# O template já traz a chave e a política da bootc-gnome-minimal-f45.
-# Os arquivos só são instalados quando ENFORCE_SIGPOLICY=true; com false, a
-# política padrão da imagem base continua valendo.
-COPY security/ /run/build-security/
-RUN if [ "$ENFORCE_SIGPOLICY" = "true" ]; then \
-        install -Dm644 /run/build-security/policy.json \
-            /etc/containers/policy.json && \
-        install -Dm644 /run/build-security/registries.d/ghcr.yaml \
-            /etc/containers/registries.d/ghcr.yaml && \
-        install -Dm644 /run/build-security/cosign.pub \
-            /etc/pki/containers/bootc-gnome.pub; \
-    fi && \
-    rm -rfv /run/build-security
 
 RUN mkdir -p /boot/efi && cp -ra /usr/lib/efi/*/*/EFI /boot/efi
 

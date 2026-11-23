@@ -136,14 +136,6 @@ validar() {
         true|false) ;;
         *) erro "ASSINADA_COM_CONSIG deve ser true ou false (valor: '$ASSINADA')." ;;
     esac
-
-    if [[ "$ASSINADA" == "true" ]]; then
-        local arquivo
-        for arquivo in security/policy.json security/registries.d/ghcr.yaml security/cosign.pub; do
-            [[ -f "$ROOT_DIR/$arquivo" ]] || \
-                erro "ASSINADA_COM_CONSIG=true exige o arquivo '$arquivo'. Use false ou inclua a política e a chave da sua imagem em security/."
-        done
-    fi
 }
 
 exigir_root() {
