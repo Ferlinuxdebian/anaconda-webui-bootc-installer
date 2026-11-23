@@ -9,12 +9,14 @@ que instala em disco a sua imagem `bootc` (por exemplo, a criada com o template
 [gnome-minimal](https://github.com/Ferlinuxdebian/gnome-minimal)).
 
 Você só altera **um arquivo**: o `build.conf`. O resto já está pronto.
-O GitHub Actions gera o ISO e o publica em **Releases**.
+O GitHub Actions gera o ISO e o publica como **um único arquivo** em
+**Actions → Artifacts**.
 
-> **Antes do primeiro build:** no GitHub, abra
-> **Settings → Actions → General → Workflow permissions** e marque
-> **Read and write permissions**. Sem isso, o workflow não consegue publicar
-> o ISO.
+> O ISO não é dividido em partes. Em repositórios públicos, o armazenamento
+> de artefatos do GitHub Actions é gratuito.
+>
+> A permissão **Read and write** só é necessária no repositório da **imagem**
+> (para publicar a imagem no GHCR), não neste repositório do ISO.
 
 ---
 
@@ -98,16 +100,11 @@ FEDORA_VERSION=44
 ## 4. Baixe o ISO
 
 1. Abra a aba **Actions** e acompanhe o build chamado **Gerar ISO de instalação**.
-2. Quando terminar, abra **Releases** (ou o link
-   `https://github.com/SEU-USUARIO/SEU-REPOSITORIO/releases/tag/iso-latest`).
-3. Baixe o arquivo `IMAGE_NAME.iso`.
+2. Quando terminar, na mesma execução, abra a seção **Artifacts**.
+3. Baixe o arquivo `<IMAGE_NAME>.iso`.
 
-Se o ISO passar de ~1,9 GiB, o workflow o divide em partes
-(`...iso.part-00`, `...iso.part-01` etc.). Baixe todas e junte:
-
-```bash
-cat minha-imagem.iso.part-* > minha-imagem.iso
-```
+É **um único arquivo**, sem partes para juntar. O artefato fica disponível por
+7 dias.
 
 ---
 
@@ -136,10 +133,10 @@ just check
 O workflow precisa rodar no Ubuntu 24.04. Ele já está fixado em
 `ubuntu-24.04`; não troque para `ubuntu-latest`.
 
-**O ISO não aparece na release**
-Veja o build em **Actions**. Se o erro for de permissão, ative
-**Settings → Actions → General → Workflow permissions → Read and write
-permissions**.
+**O ISO não aparece em Artifacts**
+Veja o build em **Actions**. Se o build passou mas o artefato falhou, confira
+se o arquivo foi gerado em `output/`. Em repositórios privados, um ISO de
+2,2 GB pode estourar a cota de armazenamento; use um repositório público.
 
 **A instalação recusa a imagem com `ASSINADA_COM_CONSIG=true`**
 A imagem não está assinada ou a assinatura não é aceita pelo instalador. Use
