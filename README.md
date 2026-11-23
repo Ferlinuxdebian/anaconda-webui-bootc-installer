@@ -10,13 +10,10 @@ que instala em disco a sua imagem `bootc` (por exemplo, a criada com o template
 
 Você só altera **um arquivo**: o `build.conf`. O resto já está pronto.
 O GitHub Actions gera o ISO e o publica como **um único arquivo** em
-**Actions → Artifacts**.
+**Actions → Artifacts**, disponível por **90 dias**.
 
-> O ISO não é dividido em partes. Em repositórios públicos, o armazenamento
-> de artefatos do GitHub Actions é gratuito.
->
-> A permissão **Read and write** só é necessária no repositório da **imagem**
-> (para publicar a imagem no GHCR), não neste repositório do ISO.
+> Em repositórios públicos, o armazenamento de artefatos do GitHub Actions é
+> gratuito. Não é preciso habilitar permissões especiais para baixar o ISO.
 
 ---
 
@@ -24,9 +21,6 @@ O GitHub Actions gera o ISO e o publica como **um único arquivo** em
 
 No GitHub, clique em **Use this template** (**Usar este modelo**) **→ Create a
 new repository**.
-
-> Para o dono deste repositório: marque **Settings → General → Template
-> repository** para habilitar o botão **Use this template**.
 
 ---
 
@@ -99,12 +93,12 @@ FEDORA_VERSION=44
 
 ## 4. Baixe o ISO
 
-1. Abra a aba **Actions** e acompanhe o build chamado **Gerar ISO de instalação**.
-2. Quando terminar, na mesma execução, abra a seção **Artifacts**.
+1. Abra a aba **Actions** e acompanhe o build **Gerar ISO de instalação**.
+2. Na mesma execução, abra a seção **Artifacts**.
 3. Baixe o arquivo `<IMAGE_NAME>.iso`.
 
-É **um único arquivo**, sem partes para juntar. O artefato fica disponível por
-7 dias.
+É **um único arquivo**, sem partes para juntar. Ele fica disponível por
+**90 dias** (o máximo do GitHub Actions).
 
 ---
 

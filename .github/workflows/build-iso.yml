@@ -45,13 +45,13 @@ jobs:
       - name: Gerar o ISO
         run: sudo ./scripts/build-iso.sh
 
-      - name: Publicar o ISO como artefato
+      - name: Publicar o ISO como artefato único (90 dias)
         uses: actions/upload-artifact@v7
         with:
           path: output/*.iso
           archive: false
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 90
 
       - name: Resumo
         run: |
