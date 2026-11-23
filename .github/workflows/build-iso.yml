@@ -19,7 +19,9 @@ concurrency:
 
 jobs:
   build-iso:
-    runs-on: ubuntu-latest
+    # O Ubuntu 26.04 tem um perfil AppArmor do bwrap que quebra o osbuild
+    # dentro do container do image-builder. A 24.04 é a versão validada.
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
 
     steps:

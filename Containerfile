@@ -1,8 +1,9 @@
 # Imagem do instalador com o Anaconda WebUI.
 #
 # Normalmente você NÃO edita este arquivo: o script scripts/build-iso.sh lê
-# build.conf e passa CONTAINER_NAME e ENFORCE_SIGPOLICY automaticamente.
-FROM quay.io/fedora/fedora-bootc:45
+# build.conf e passa FEDORA_VERSION, CONTAINER_NAME e ENFORCE_SIGPOLICY.
+ARG FEDORA_VERSION=45
+FROM quay.io/fedora/fedora-bootc:${FEDORA_VERSION}
 
 # Imagem bootc personalizada que será instalada pelo ISO.
 # Definida em build.conf (LINK_DA_IMAGEM_PERSONALIZADA) e passada pelo script.
@@ -39,7 +40,7 @@ RUN dnf install -qy \
 
 RUN dnf clean all
 
-# O comando kickstart `bootc` do Anaconda (F45) não expõe a opção
+# O comando kickstart `bootc` do Anaconda não expõe a opção
 # --enforce-container-sigpolicy, mas o bootc lê a configuração de instalação em
 # /etc/bootc/install no ambiente do instalador. Quando ENFORCE_SIGPOLICY=true,
 # o bootc passa a exigir que a política de contêineres aprove a assinatura.

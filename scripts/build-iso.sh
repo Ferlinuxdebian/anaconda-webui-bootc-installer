@@ -71,6 +71,7 @@ done
 CONF_NAME="$(basename "$CONF")"
 
 IMAGE_NAME=""
+FEDORA_VERSION="45"
 LINK=""
 ASSINADA=""
 
@@ -108,10 +109,11 @@ ler_config() {
 
         case "$chave" in
             IMAGE_NAME)                   IMAGE_NAME="$valor" ;;
+            FEDORA_VERSION)               FEDORA_VERSION="$valor" ;;
             LINK_DA_IMAGEM_PERSONALIZADA) LINK="$valor" ;;
             ASSINADA_COM_CONSIG)          ASSINADA="${valor,,}" ;;
             *)
-                erro "$CONF_NAME, linha $numero: chave desconhecida '$chave'. Use IMAGE_NAME, LINK_DA_IMAGEM_PERSONALIZADA e ASSINADA_COM_CONSIG."
+                erro "$CONF_NAME, linha $numero: chave desconhecida '$chave'. Use IMAGE_NAME, FEDORA_VERSION, LINK_DA_IMAGEM_PERSONALIZADA e ASSINADA_COM_CONSIG."
                 ;;
         esac
     done < "$CONF"
@@ -136,6 +138,9 @@ validar() {
         true|false) ;;
         *) erro "ASSINADA_COM_CONSIG deve ser true ou false (valor: '$ASSINADA')." ;;
     esac
+
+    [[ "$FEDORA_VERSION" =~ ^[0-9]+$ ]] || \
+        erro "FEDORA_VERSION deve ser um número (ex.: 45 ou 44). Valor encontrado: '$FEDORA_VERSION'."
 }
 
 exigir_root() {
@@ -157,6 +162,7 @@ construir_instalador() {
     INSTALLER_IMAGE="localhost/bootc-iso-${IMAGE_NAME}:latest"
 
     echo "→ Construindo a imagem do instalador: $INSTALLER_IMAGE"
+    echo "   imagem base:       quay.io/fedora/fedora-bootc:$FEDORA_VERSION"
     echo "   imagem a instalar: $LINK"
     echo "   exige assinatura:  $ASSINADA"
     echo
@@ -164,6 +170,7 @@ construir_instalador() {
     podman build \
         --security-opt label=disable \
         -t "$INSTALLER_IMAGE" \
+        --build-arg "FEDORA_VERSION=$FEDORA_VERSION" \
         --build-arg "CONTAINER_NAME=$LINK" \
         --build-arg "ENFORCE_SIGPOLICY=$ASSINADA" \
         -f "$ROOT_DIR/Containerfile" \
@@ -228,6 +235,7 @@ validar
 if [[ "$MODE" == "check" ]]; then
     echo "$CONF_NAME válido:"
     echo "  IMAGE_NAME=$IMAGE_NAME"
+    echo "  FEDORA_VERSION=$FEDORA_VERSION"
     echo "  LINK_DA_IMAGEM_PERSONALIZADA=$LINK"
     echo "  ASSINADA_COM_CONSIG=$ASSINADA"
     echo "  saída: output/$IMAGE_NAME.iso"

@@ -61,6 +61,7 @@ O build começa no push.
 
 ```bash
 IMAGE_NAME=bootc-gnome-minimal-f45
+FEDORA_VERSION=45
 LINK_DA_IMAGEM_PERSONALIZADA=ghcr.io/ferlinuxdebian/bootc-gnome-minimal-f45:latest
 ASSINADA_COM_CONSIG=true
 ```
@@ -68,6 +69,7 @@ ASSINADA_COM_CONSIG=true
 | Variável | O que colocar |
 | --- | --- |
 | `IMAGE_NAME` | Nome da imagem no registro do GitHub (GHCR), **sem** `ghcr.io/`, **sem** o usuário e **sem** a tag. Também vira o nome do ISO: `output/<IMAGE_NAME>.iso`. |
+| `FEDORA_VERSION` | Versão do Fedora usada na imagem base do instalador: `quay.io/fedora/fedora-bootc:<FEDORA_VERSION>`. O padrão é `45`; para usar Fedora 44, coloque `44`. Isso muda o instalador (Anaconda), não a imagem que ele instala. |
 | `LINK_DA_IMAGEM_PERSONALIZADA` | Link completo da imagem que o instalador vai baixar, no formato `registro/repositório:tag` (ex.: `ghcr.io/joao/minha-imagem:latest`). |
 | `ASSINADA_COM_CONSIG` | `true` exige que a imagem seja assinada. `false` aceita qualquer imagem. |
 
@@ -75,8 +77,15 @@ Exemplo com outra imagem:
 
 ```bash
 IMAGE_NAME=minha-imagem
+FEDORA_VERSION=45
 LINK_DA_IMAGEM_PERSONALIZADA=ghcr.io/joao/minha-imagem:latest
 ASSINADA_COM_CONSIG=false
+```
+
+Para usar o instalador baseado no Fedora 44, basta trocar:
+
+```bash
+FEDORA_VERSION=44
 ```
 
 > **Se a sua imagem não for assinada, use `false`.**
@@ -122,6 +131,10 @@ just check
 ---
 
 ## 6. Problemas comuns
+
+**O build falha com `mount: /run/osbuild/containers/storage: permission denied`**
+O workflow precisa rodar no Ubuntu 24.04. Ele já está fixado em
+`ubuntu-24.04`; não troque para `ubuntu-latest`.
 
 **O ISO não aparece na release**
 Veja o build em **Actions**. Se o erro for de permissão, ative
