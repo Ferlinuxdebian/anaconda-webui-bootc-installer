@@ -1,0 +1,12 @@
+# Não envia ao contexto do podman build o que não entra na imagem.
+.git
+.github
+output
+*.iso
+README.md
+LICENSE.md
+build.conf
+build.env
+build.yaml
+justfile
+scripts

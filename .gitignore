@@ -1,0 +1,6 @@
+# Saída de builds e ISOs gerados
+output/
+*.iso
+
+# Cache local
+.cache/

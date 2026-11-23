@@ -1,0 +1,97 @@
+name: Gerar ISO de instalação
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE.md'
+  workflow_dispatch:
+
+permissions:
+  # O ISO é publicado em uma release, por isso o token precisa de escrita.
+  contents: write
+
+concurrency:
+  group: iso-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+
+      - name: Liberar espaço em disco
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/share/boost "${AGENT_TOOLSDIRECTORY:-}"
+          df -h
+
+      - name: Instalar o Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+          podman --version
+
+      - name: Validar o build.conf
+        run: ./scripts/build-iso.sh --check
+
+      - name: Gerar o ISO
+        run: sudo ./scripts/build-iso.sh
+
+      - name: Preparar o ISO para download
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          ISO="$(find output -maxdepth 1 -type f -name '*.iso' | head -n1)"
+          [ -n "$ISO" ] || { echo "ERRO: nenhum ISO encontrado em output/"; exit 1; }
+          ls -lh "$ISO"
+
+          # O GitHub aceita no máximo 2 GiB por arquivo de release. Se o ISO
+          # passar de 1,9 GiB, ele é dividido em partes menores.
+          LIMITE=$((1900 * 1024 * 1024))
+          TAMANHO="$(stat -c%s "$ISO")"
+          if [ "$TAMANHO" -le "$LIMITE" ]; then
+            cp "$ISO" release/
+          else
+            split -b 1900M -d -a 2 "$ISO" "release/$(basename "$ISO").part-"
+            {
+              echo "O ISO passou do limite de 2 GiB do GitHub e foi dividido."
+              echo
+              echo "Baixe TODAS as partes e junte na ordem:"
+              echo
+              echo "  cat $(basename "$ISO").part-* > $(basename "$ISO")"
+            } > release/LEIA-ME.txt
+          fi
+          ls -lh release/
+
+      - name: Publicar na release "ISO mais recente"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="iso-latest"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release view "$TAG" --json assets --jq -r '.assets[].name' |
+              while IFS= read -r nome; do
+                [ -n "$nome" ] && gh release delete-asset "$TAG" "$nome" --yes
+              done
+            gh release upload "$TAG" release/* --clobber
+          else
+            gh release create "$TAG" release/* \
+              --title "ISO mais recente" \
+              --notes "ISO gerado automaticamente a partir do build.conf." \
+              --latest
+          fi
+
+      - name: Resumo
+        run: |
+          echo "### ISO gerado" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Baixe em: https://github.com/${GITHUB_REPOSITORY}/releases/tag/iso-latest" >> "$GITHUB_STEP_SUMMARY"

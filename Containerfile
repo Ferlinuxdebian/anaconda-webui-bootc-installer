@@ -1,10 +1,16 @@
+# Imagem do instalador com o Anaconda WebUI.
+#
+# Normalmente você NÃO edita este arquivo: o script scripts/build-iso.sh lê
+# build.conf e passa CONTAINER_NAME e ENFORCE_SIGPOLICY automaticamente.
 FROM quay.io/fedora/fedora-bootc:45
 
-# Imagem bootc personalizada que será instalada pelo ISO
+# Imagem bootc personalizada que será instalada pelo ISO.
+# Definida em build.conf (LINK_DA_IMAGEM_PERSONALIZADA) e passada pelo script.
 ARG CONTAINER_NAME=quay.io/fedora/fedora-bootc:45
 
-# Quando "true", exige que a política de contêineres requeira assinaturas
+# Quando "true", exige assinatura de contêiner na instalação
 # (equivalente a --enforce-container-sigpolicy no bootc install).
+# Definido em build.conf (ASSINADA_COM_CONSIG).
 ARG ENFORCE_SIGPOLICY=false
 
 # Instala os pacotes essenciais do Anaconda para gerar o ISO com o instalador
@@ -36,7 +42,11 @@ RUN dnf clean all
 # O comando kickstart `bootc` do Anaconda (F45) não expõe a opção
 # --enforce-container-sigpolicy, mas o bootc lê a configuração de instalação em
 # /etc/bootc/install no ambiente do instalador. Quando ENFORCE_SIGPOLICY=true,
-# exigimos que o /etc/containers/policy.json requeira assinaturas.
+# o bootc passa a exigir que a política de contêineres aprove a assinatura.
+#
+# Atenção: esta opção NÃO assina a imagem. Ela apenas liga a exigência; a
+# chave pública e a política de confiança são instaladas no passo seguinte,
+# a partir da pasta security/ do repositório.
 RUN mkdir -p /etc/bootc/install && \
     if [ "$ENFORCE_SIGPOLICY" = "true" ]; then \
         printf '[install]\nenforce-container-sigpolicy = true\n' \
@@ -45,30 +55,44 @@ RUN mkdir -p /etc/bootc/install && \
         rm -f /etc/bootc/install/50-enforce-sigpolicy.toml; \
     fi
 
+# Política de confiança para imagens assinadas.
+# O template já traz a chave e a política da bootc-gnome-minimal-f45.
+# Os arquivos só são instalados quando ENFORCE_SIGPOLICY=true; com false, a
+# política padrão da imagem base continua valendo.
+COPY security/ /run/build-security/
+RUN if [ "$ENFORCE_SIGPOLICY" = "true" ]; then \
+        install -Dm644 /run/build-security/policy.json \
+            /etc/containers/policy.json && \
+        install -Dm644 /run/build-security/registries.d/ghcr.yaml \
+            /etc/containers/registries.d/ghcr.yaml && \
+        install -Dm644 /run/build-security/cosign.pub \
+            /etc/pki/containers/bootc-gnome.pub; \
+    fi && \
+    rm -rfv /run/build-security
+
 RUN mkdir -p /boot/efi && cp -ra /usr/lib/efi/*/*/EFI /boot/efi
 
 # ---
 
 # algumas configurações para o nosso ISO
 
-RUN mkdir -p /usr/lib/image-builder/bootc
-
 # Configurado com inst.webui para iniciar o Anaconda WebUI como instalador principal
-RUN cat <<EOF > /usr/lib/image-builder/bootc/iso.yaml
-label: "Fedora-bootc-Installer"
-grub2:
-  timeout: 5
-  entries:
-    - name: "Install Fedora (bootc WebUI Wayland Local)"
-      linux: \${kernelpath} \${root} inst.webui
-      initrd: \${initrdpath}
-EOF
+RUN mkdir -p /usr/lib/image-builder/bootc && \
+    printf '%s\n' \
+        'label: "Fedora-bootc-Installer"' \
+        'grub2:' \
+        '  timeout: 5' \
+        '  entries:' \
+        '    - name: "Install Fedora (bootc WebUI Wayland Local)"' \
+        '      linux: ${kernelpath} ${root} inst.webui' \
+        '      initrd: ${initrdpath}' \
+        > /usr/lib/image-builder/bootc/iso.yaml
 
 # algumas configurações para o anaconda
 
-COPY <<EOT /usr/share/anaconda/interactive-defaults.ks
-bootc --source-imgref registry:${CONTAINER_NAME} --target-imgref ${CONTAINER_NAME}
-EOT
+RUN printf '%s\n' \
+    "bootc --source-imgref registry:${CONTAINER_NAME} --target-imgref ${CONTAINER_NAME}" \
+    > /usr/share/anaconda/interactive-defaults.ks
 
 # ---
 
@@ -86,11 +110,9 @@ RUN mv /usr/share/anaconda/list-harddrives-stub /usr/bin/list-harddrives && \
 
 RUN ln -s /usr/lib/systemd/system/anaconda-shell@.service /usr/lib/systemd/system/autovt@.service
 
-RUN mkdir -p /usr/lib/systemd/logind.conf.d
-COPY <<EOT /usr/lib/systemd/logind.conf.d/anaconda-shell.conf
-[Login]
-ReserveVT=2
-EOT
+RUN mkdir -p /usr/lib/systemd/logind.conf.d && \
+    printf '%s\n' '[Login]' 'ReserveVT=2' \
+        > /usr/lib/systemd/logind.conf.d/anaconda-shell.conf
 
 RUN mkdir "$(realpath /root)" && \
     kernel=$(kernel-install list --json pretty | jq -r '.[] | select(.has_kernel == true) | .version') && \
@@ -98,14 +120,10 @@ RUN mkdir "$(realpath /root)" && \
         --add "anaconda" \
         "/usr/lib/modules/${kernel}/initramfs.img" "${kernel}"
 
-RUN mkdir /etc/systemd/user/pipewire.service.d/
-COPY <<EOT /etc/systemd/user/pipewire.service.d/allowroot.conf
-[Unit]
-ConditionUser=
-EOT
+RUN mkdir -p /etc/systemd/user/pipewire.service.d && \
+    printf '%s\n' '[Unit]' 'ConditionUser=' \
+        > /etc/systemd/user/pipewire.service.d/allowroot.conf
 
-RUN mkdir /etc/systemd/user/pipewire.socket.d/
-COPY <<EOT /etc/systemd/user/pipewire.socket.d/allowroot.conf
-[Unit]
-ConditionUser=
-EOT
+RUN mkdir -p /etc/systemd/user/pipewire.socket.d && \
+    printf '%s\n' '[Unit]' 'ConditionUser=' \
+        > /etc/systemd/user/pipewire.socket.d/allowroot.conf
